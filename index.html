@@ -129,18 +129,6 @@
       color: var(--primary);
       border-bottom-color: var(--primary);
     }
-    @keyframes slot-shake {
-      0%, 100% { transform: translateX(0); }
-      20% { transform: translateX(-6px); }
-      40% { transform: translateX(6px); }
-      60% { transform: translateX(-4px); }
-      80% { transform: translateX(4px); }
-    }
-    .slot-input.shake {
-      animation: slot-shake 0.4s ease-in-out;
-      border-bottom-color: var(--error) !important;
-      color: var(--error) !important;
-    }
     .hints { margin: 12px 0; color: var(--text-dim); }
     .hints summary { cursor: pointer; padding: 4px 0; }
     .hints ul { padding-left: 20px; margin-top: 6px; }
@@ -409,23 +397,22 @@
           if (!v) return // empty, just wait
 
           if (normalize(v) === normalize(expected)) {
-            // Correct! Jump to next slot.
+            // Correct! Auto-jump to next slot.
             focusNextSlot(i)
-          } else if (v.length >= expected.length) {
-            // Wrong word + reached expected length - shake to give feedback.
-            triggerShake(i)
           }
+          // If wrong, stay on current slot. The red border shows the state visually;
+          // no popup / shake / extra prompt. User can press Enter to advance.
         }
 
-        function triggerShake(i) {
+        function onSlotEnter(i) {
+          // Enter replaces Tab as the advance-to-next-slot key.
+          // On the last slot, Enter submits the question.
           const inputs = document.querySelectorAll('.slot-input')
-          const input = inputs[i]
-          if (!input) return
-          input.classList.remove('shake')
-          // Force reflow so the animation can restart.
-          void input.offsetWidth
-          input.classList.add('shake')
-          setTimeout(() => input.classList.remove('shake'), 450)
+          if (i + 1 < inputs.length) {
+            inputs[i + 1].focus()
+          } else {
+            next()
+          }
         }
 
         function focusNextSlot(i) {
@@ -449,7 +436,7 @@
         }
 
         function handleKeydown(e) {
-          if (e.target.tagName === 'INPUT' && e.key !== 'Tab') return
+          if (e.target.tagName === 'INPUT') return
           if (showAnalysis.value) {
             if (e.key === 'Escape' || e.key === 'Enter') {
               e.preventDefault()
@@ -460,7 +447,7 @@
           if (e.key === 'Enter') {
             e.preventDefault()
             next()
-          } else if (e.key === 'Tab') {
+          } else if (e.key === ' ') {
             e.preventDefault()
             reveal()
           } else if (e.key >= '1' && e.key <= '6') {
@@ -492,7 +479,7 @@
           exitAnalysis,
           resetSlots,
           onSlotInput,
-          triggerShake,
+          onSlotEnter,
           focusNextSlot,
           onBackspace,
         }
@@ -534,10 +521,8 @@
                 }"
                 :placeholder="revealed ? slot.expected : '_'"
                 :disabled="revealed"
-                @keydown.enter.prevent="next"
+                @keydown.enter.prevent="onSlotEnter(i)"
                 @input="onSlotInput(i, $event)"
-                @keydown.space.prevent="focusNextSlot(i)"
-                @keydown.tab.prevent="focusNextSlot(i)"
                 @keydown.backspace="onBackspace(i, $event)"
               />
             </div>

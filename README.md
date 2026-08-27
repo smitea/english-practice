@@ -35,10 +35,19 @@ Or just double-click `index.html` in your file manager.
 
 | Key | Action |
 |---|---|
-| `Enter` | Submit answer / advance to next question |
-| `Tab` | Toggle reveal answer |
+| `Enter` | Submit answer / advance to next question. In a slot: jump to next slot. On last slot: submit. |
+| `Space` | Toggle reveal answer |
 | `1`–`6` | Switch to category 1–6 |
 | `Esc` | Exit analysis view |
+
+### Word-slot behavior
+
+Each English word gets its own input. As you type:
+
+- ✅ Correct word + auto-jump: when you finish typing a word that matches, focus moves to the next slot automatically.
+- ❌ Wrong word: the slot's bottom border turns red; no popup or shake animation. Press `Enter` to advance manually, or correct the word (delete + retype).
+- `Enter` advances to the next slot regardless of whether the current word is correct. On the last slot, `Enter` submits the whole answer.
+- `Backspace` on an empty slot moves focus back to the previous slot.
 
 ## How to add more questions
 
