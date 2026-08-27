@@ -6,6 +6,70 @@
   <title>English Practice</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <p>Loading…</p>
+  </div>
+
+  <!-- Question bank (will be replaced in Task 7 with full 120 questions) -->
+  <script type="application/json" id="questions-data">
+[
+  {
+    "id": 1,
+    "category": "daily_greetings",
+    "scene_emoji": "☕",
+    "scene_desc": "朋友在咖啡馆偶遇",
+    "chinese": "你最近过得怎么样？",
+    "english": "How have you been?",
+    "hints": ["最近 recently", "过得 get along", "怎么样 how"],
+    "difficulty": "beginner",
+    "words": [
+      { "text": "How",  "phonetic": "/haʊ/", "pos": "adverb",     "pos_zh": "副词",   "meaning_zh": "怎样",     "role_zh": "疑问副词" },
+      { "text": "have", "phonetic": "/hæv/", "pos": "auxiliary",  "pos_zh": "助动词", "meaning_zh": "已经",     "role_zh": "助动词" },
+      { "text": "you",  "phonetic": "/juː/", "pos": "pronoun",    "pos_zh": "代词",   "meaning_zh": "你",       "role_zh": "主语" },
+      { "text": "been", "phonetic": "/bɪn/", "pos": "verb",       "pos_zh": "动词",   "meaning_zh": "是、存在", "role_zh": "谓语" }
+    ],
+    "usage_context": "用于问候许久未见的朋友、同学、同事等熟人,语气随意亲切。常用于再次见面时的开场白,也可用于邮件/消息的开头。",
+    "similar": [
+      { "english": "How have you been doing?", "chinese": "你最近过得怎么样？(更随意)" },
+      { "english": "How are you doing lately?", "chinese": "你最近怎么样？" }
+    ],
+    "examples": [
+      {
+        "english": "Hey Sarah! How have you been? It's been ages since we last met.",
+        "chinese": "嘿 Sarah! 你最近怎么样?我们好久没见了。"
+      },
+      {
+        "english": "How have you been since you moved to Shanghai?",
+        "chinese": "你搬到上海以后过得怎么样?"
+      }
+    ]
+  }
+]
+  </script>
+
+  <!-- Vue 3 (CDN) -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <script>
+    const QUESTIONS = JSON.parse(
+      document.getElementById('questions-data').textContent
+    )
+
+    const { createApp, ref, computed } = Vue
+
+    createApp({
+      setup() {
+        const current = ref(QUESTIONS[0])
+        return { current }
+      },
+      template: `
+        <div>
+          <p>{{ current.scene_emoji }} {{ current.scene_desc }}</p>
+          <h2>{{ current.chinese }}</h2>
+          <p><strong>Answer:</strong> {{ current.english }}</p>
+        </div>
+      `
+    }).mount('#app')
+  </script>
 </body>
 </html>
