@@ -29,9 +29,12 @@
       font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
       min-height: 100vh;
       padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    #app { max-width: 720px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; margin-bottom: 16px; text-align: center; }
+    #app { max-width: 720px; margin: 0 auto; width: 100%; }
     button {
       background: var(--surface);
       color: var(--text);
@@ -408,8 +411,6 @@
       },
       template: `
         <div>
-          <h1>English Practice</h1>
-
           <!-- Practice View -->
           <section v-if="!showAnalysis">
             <div class="scene">
