@@ -440,6 +440,7 @@
                 }"
                 :placeholder="revealed ? slot.expected : '_'"
                 @keydown.space.prevent="onSlotSpace(i)"
+                @keydown.tab.prevent
                 @keydown.enter.prevent="next"
                 @input="onSlotInput(i, $event)"
                 @keydown.backspace="onBackspace(i, $event)"
