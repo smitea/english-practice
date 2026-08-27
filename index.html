@@ -76,6 +76,46 @@
     .answer-feedback.ok { border-left: 3px solid var(--primary-bright); }
     .answer-feedback.bad { border-left: 3px solid var(--error); }
     .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .analysis-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .badge-ok { color: var(--primary-bright); font-weight: 600; }
+    .english-large {
+      font-size: 1.8rem;
+      color: var(--primary);
+      text-align: center;
+      margin: 16px 0 24px;
+    }
+    .word-table-wrapper { overflow-x: auto; margin-bottom: 20px; }
+    .word-table { width: 100%; border-collapse: collapse; min-width: 400px; }
+    .word-table th, .word-table td {
+      padding: 8px 12px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .word-table thead th { font-size: 1.1rem; padding-bottom: 12px; border-bottom: 2px solid var(--primary); }
+    .word-table .phonetic { color: var(--text-dim); font-style: italic; font-family: "Times New Roman", serif; }
+    .word-table .role { color: var(--text-dim); font-size: 0.9rem; }
+    .pos-noun { color: var(--pos-noun); }
+    .pos-verb { color: var(--pos-verb); }
+    .pos-adjective { color: var(--pos-adjective); }
+    .pos-adverb { color: var(--pos-adverb); }
+    .pos-pronoun { color: var(--pos-pronoun); }
+    .pos-auxiliary { color: var(--pos-auxiliary); }
+    .pos-preposition, .pos-conjunction, .pos-article, .pos-particle { color: var(--pos-other); }
+    .usage, .examples, .similar {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .usage h3, .examples h3, .similar h3 { font-size: 1rem; margin-bottom: 8px; color: var(--primary); }
+    .example { margin-bottom: 12px; }
+    .example:last-child { margin-bottom: 0; }
+    .ex-en { font-size: 1.05rem; }
+    .ex-cn { color: var(--text-dim); margin-top: 4px; }
+    .similar ul { list-style: none; padding: 0; }
+    .similar li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .similar li:last-child { border-bottom: none; }
+    .sim-cn { display: block; color: var(--text-dim); margin-top: 2px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -153,6 +193,7 @@
         const userAnswer = ref('')
         const revealed = ref(false)
         const lastResult = ref(null)
+        const showAnalysis = ref(false)
 
         const filtered = computed(() =>
           QUESTIONS.filter(q => q.category === currentCategory.value)
@@ -167,8 +208,12 @@
 
         function next() {
           const answered = userAnswer.value.trim().length > 0
-          if (answered) {
+          if (answered && revealed.value) {
             lastResult.value = isCorrect.value ? 'correct' : 'wrong'
+          }
+          if (lastResult.value === 'correct') {
+            showAnalysis.value = true
+            return
           }
           revealed.value = false
           userAnswer.value = ''
@@ -188,6 +233,14 @@
           lastResult.value = null
         }
 
+        function exitAnalysis() {
+          showAnalysis.value = false
+          revealed.value = false
+          userAnswer.value = ''
+          lastResult.value = null
+          currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+        }
+
         return {
           CATEGORIES,
           currentCategory,
@@ -195,17 +248,19 @@
           userAnswer,
           revealed,
           lastResult,
+          showAnalysis,
           isCorrect,
           next,
           reveal,
           switchCategory,
+          exitAnalysis,
         }
       },
       template: `
         <div>
           <h1>English Practice</h1>
 
-          <nav class="tabs">
+          <nav class="tabs" v-if="!showAnalysis">
             <button
               v-for="cat in CATEGORIES"
               :key="cat.id"
@@ -214,37 +269,101 @@
             >{{ cat.label }}</button>
           </nav>
 
-          <section class="scene">
-            <div class="emoji">{{ current.scene_emoji }}</div>
-            <div class="scene-desc">{{ current.scene_desc }}</div>
+          <!-- Practice View -->
+          <section v-if="!showAnalysis">
+            <div class="scene">
+              <div class="emoji">{{ current.scene_emoji }}</div>
+              <div class="scene-desc">{{ current.scene_desc }}</div>
+            </div>
+
+            <div class="chinese">{{ current.chinese }}</div>
+
+            <input
+              type="text"
+              v-model="userAnswer"
+              placeholder="输入英文翻译…"
+              @keydown.enter="next"
+            />
+
+            <details class="hints">
+              <summary>词汇提示</summary>
+              <ul>
+                <li v-for="hint in current.hints" :key="hint">{{ hint }}</li>
+              </ul>
+            </details>
+
+            <div v-if="revealed" class="answer-feedback" :class="{ ok: isCorrect, bad: !isCorrect && userAnswer.length > 0 }">
+              <p v-if="isCorrect">✓ 答对了！</p>
+              <p v-else-if="userAnswer.length > 0">✗ 答案是: <strong>{{ current.english }}</strong></p>
+              <p v-else>答案: <strong>{{ current.english }}</strong></p>
+            </div>
+
+            <div class="actions">
+              <button @click="reveal">{{ revealed ? '隐藏答案' : '显示答案' }}</button>
+              <button class="primary" @click="next">下一题 →</button>
+            </div>
           </section>
 
-          <section class="chinese">{{ current.chinese }}</section>
+          <!-- Analysis View -->
+          <section v-else class="analysis">
+            <div class="analysis-header">
+              <button @click="exitAnalysis">← 返回</button>
+              <span class="badge-ok">✓ 答对了！</span>
+            </div>
 
-          <input
-            type="text"
-            v-model="userAnswer"
-            placeholder="输入英文翻译…"
-            @keydown.enter="next"
-          />
+            <h2 class="english-large">{{ current.english }}</h2>
 
-          <details class="hints">
-            <summary>词汇提示</summary>
-            <ul>
-              <li v-for="hint in current.hints" :key="hint">{{ hint }}</li>
-            </ul>
-          </details>
+            <div class="word-table-wrapper">
+              <table class="word-table">
+                <thead>
+                  <tr>
+                    <th v-for="(w, i) in current.words" :key="i" :class="'pos-' + w.pos">{{ w.text }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td v-for="(w, i) in current.words" :key="'p' + i" class="phonetic">{{ w.phonetic }}</td>
+                  </tr>
+                  <tr>
+                    <td v-for="(w, i) in current.words" :key="'pos' + i" :class="'pos-' + w.pos">{{ w.pos_zh }}</td>
+                  </tr>
+                  <tr>
+                    <td v-for="(w, i) in current.words" :key="'m' + i">{{ w.meaning_zh }}</td>
+                  </tr>
+                  <tr>
+                    <td v-for="(w, i) in current.words" :key="'r' + i" class="role">{{ w.role_zh }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-          <section v-if="revealed" class="answer-feedback" :class="{ ok: isCorrect, bad: !isCorrect && userAnswer.length > 0 }">
-            <p v-if="isCorrect">✓ 答对了！</p>
-            <p v-else-if="userAnswer.length > 0">✗ 答案是: <strong>{{ current.english }}</strong></p>
-            <p v-else>答案: <strong>{{ current.english }}</strong></p>
+            <div class="usage">
+              <h3>💡 适用场景</h3>
+              <p>{{ current.usage_context }}</p>
+            </div>
+
+            <div class="examples">
+              <h3>💬 示例</h3>
+              <div v-for="(ex, i) in current.examples" :key="i" class="example">
+                <p class="ex-en">{{ ex.english }}</p>
+                <p class="ex-cn">{{ ex.chinese }}</p>
+              </div>
+            </div>
+
+            <div class="similar">
+              <h3>📝 相似句式</h3>
+              <ul>
+                <li v-for="(s, i) in current.similar" :key="i">
+                  <span class="sim-en">{{ s.english }}</span>
+                  <span class="sim-cn">{{ s.chinese }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="actions">
+              <button class="primary" @click="exitAnalysis">下一题 →</button>
+            </div>
           </section>
-
-          <div class="actions">
-            <button @click="reveal">{{ revealed ? '隐藏答案' : '显示答案' }}</button>
-            <button class="primary" @click="next">下一题 →</button>
-          </div>
         </div>
       `
     }).mount('#app')
