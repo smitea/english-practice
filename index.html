@@ -129,6 +129,18 @@
       color: var(--primary);
       border-bottom-color: var(--primary);
     }
+    @keyframes slot-shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .slot-input.shake {
+      animation: slot-shake 0.4s ease-in-out;
+      border-bottom-color: var(--error) !important;
+      color: var(--error) !important;
+    }
     .hints { margin: 12px 0; color: var(--text-dim); }
     .hints summary { cursor: pointer; padding: 4px 0; }
     .hints ul { padding-left: 20px; margin-top: 6px; }
@@ -388,31 +400,43 @@
           if (cleaned !== e.target.value) {
             slotInputs.value[i] = cleaned
           }
+          // No auto-jump on correct: user explicitly presses Space to commit/advance.
+        }
 
+        function onSlotSpace(i) {
+          // Space = "commit and advance".
+          // - Empty slot: advance to next.
+          // - Correct word: advance to next.
+          // - Wrong word: shake the bottom-border (underline), stay on current.
+          // - On last slot: submit the question.
+          const inputs = document.querySelectorAll('.slot-input')
           const v = slotInputs.value[i] || ''
           const expected = (current.value.english
             .replace(/[.,!?;:'"]/g, '')
             .split(/\s+/)[i]) || ''
 
-          if (!v) return // empty, just wait
-
-          if (normalize(v) === normalize(expected)) {
-            // Correct! Auto-jump to next slot.
-            focusNextSlot(i)
+          const isCorrect = !v || normalize(v) === normalize(expected)
+          if (!isCorrect) {
+            triggerShake(i)
+            return
           }
-          // If wrong, stay on current slot. The red border shows the state visually;
-          // no popup / shake / extra prompt. User can press Enter to advance.
-        }
-
-        function onSlotEnter(i) {
-          // Enter replaces Tab as the advance-to-next-slot key.
-          // On the last slot, Enter submits the question.
-          const inputs = document.querySelectorAll('.slot-input')
+          // Correct (or empty) - advance.
           if (i + 1 < inputs.length) {
             inputs[i + 1].focus()
           } else {
             next()
           }
+        }
+
+        function triggerShake(i) {
+          const inputs = document.querySelectorAll('.slot-input')
+          const input = inputs[i]
+          if (!input) return
+          input.classList.remove('shake')
+          // Force reflow so the animation can restart.
+          void input.offsetWidth
+          input.classList.add('shake')
+          setTimeout(() => input.classList.remove('shake'), 450)
         }
 
         function focusNextSlot(i) {
@@ -479,7 +503,8 @@
           exitAnalysis,
           resetSlots,
           onSlotInput,
-          onSlotEnter,
+          onSlotSpace,
+          triggerShake,
           focusNextSlot,
           onBackspace,
         }
@@ -521,7 +546,8 @@
                 }"
                 :placeholder="revealed ? slot.expected : '_'"
                 :disabled="revealed"
-                @keydown.enter.prevent="onSlotEnter(i)"
+                @keydown.space.prevent="onSlotSpace(i)"
+                @keydown.enter.prevent="next"
                 @input="onSlotInput(i, $event)"
                 @keydown.backspace="onBackspace(i, $event)"
               />
