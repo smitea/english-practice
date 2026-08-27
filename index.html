@@ -31,7 +31,7 @@
       padding: 20px;
     }
     #app { max-width: 720px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; margin-bottom: 16px; }
+    h1 { font-size: 1.4rem; margin-bottom: 16px; text-align: center; }
     button {
       background: var(--surface);
       color: var(--text);
@@ -65,15 +65,10 @@
       padding: 10px 4px;
       font-size: 1.05rem;
     }
-    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-    .tabs button.active { background: var(--primary); color: #000; border-color: var(--primary); }
     .scene { text-align: center; margin: 24px 0; }
     .emoji { font-size: 3.5rem; }
     .scene-desc { color: var(--text-dim); margin-top: 6px; }
     .chinese {
-      background: var(--surface);
-      border-radius: 8px;
-      padding: 20px;
       font-size: 1.5rem;
       text-align: center;
       margin-bottom: 16px;
@@ -186,7 +181,7 @@
     .sim-cn { display: block; color: var(--text-dim); margin-top: 2px; font-size: 0.9rem; }
     @media (max-width: 600px) {
       body { padding: 12px; }
-      .chinese { font-size: 1.3rem; padding: 16px; }
+      .chinese { font-size: 1.3rem; }
       .english-large { font-size: 1.5rem; }
       .emoji { font-size: 3rem; }
       .word-table { min-width: 320px; }
@@ -214,15 +209,6 @@
       document.getElementById('questions-data').textContent
     )
 
-    const CATEGORIES = [
-      { id: 'daily_greetings', label: '寒暄' },
-      { id: 'work',            label: '工作' },
-      { id: 'travel',          label: '旅行' },
-      { id: 'shopping',        label: '购物' },
-      { id: 'social_emotion',  label: '社交' },
-      { id: 'daily_life',      label: '生活' },
-    ]
-
     function normalize(s) {
       return s
         .toLowerCase()
@@ -231,34 +217,17 @@
         .replace(/\s+/g, ' ')
     }
 
-    // localStorage helpers removed — progress tracking UI was removed.
-    function getLastCategory() {
-      try {
-        const raw = localStorage.getItem('english-practice/lastCategory')
-        return raw || 'daily_greetings'
-      } catch (e) {
-        return 'daily_greetings'
-      }
-    }
-    function setLastCategory(c) {
-      try { localStorage.setItem('english-practice/lastCategory', c) } catch (e) {}
-    }
-
     const { createApp, ref, computed } = Vue
 
     createApp({
       setup() {
-        const currentCategory = ref(getLastCategory())
         const slotInputs = ref([])
         const revealed = ref(false)
         const lastResult = ref(null)
         const showAnalysis = ref(false)
 
-        const filtered = computed(() =>
-          QUESTIONS.filter(q => q.category === currentCategory.value)
-        )
         const currentIndex = ref(0)
-        const current = computed(() => filtered.value[currentIndex.value] || filtered.value[0])
+        const current = computed(() => QUESTIONS[currentIndex.value] || QUESTIONS[0])
 
         const userAnswer = computed(() =>
           slotInputs.value.map(s => s.trim()).filter(Boolean).join(' ')
@@ -304,7 +273,7 @@
         function advance() {
           revealed.value = false
           lastResult.value = null
-          currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+          currentIndex.value = (currentIndex.value + 1) % QUESTIONS.length
           resetSlots()
         }
 
@@ -328,21 +297,12 @@
           revealed.value = true
         }
 
-        function switchCategory(catId) {
-          currentCategory.value = catId
-          setLastCategory(catId)
-          currentIndex.value = 0
-          revealed.value = false
-          lastResult.value = null
-          resetSlots()
-        }
-
         function exitAnalysis() {
           showAnalysis.value = false
           revealed.value = false
           resetSlots()
           lastResult.value = null
-          currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+          currentIndex.value = (currentIndex.value + 1) % QUESTIONS.length
         }
 
         function onSlotInput(i, e) {
@@ -422,17 +382,12 @@
           if (e.key === 'Enter') {
             e.preventDefault()
             next()
-          } else if (e.key >= '1' && e.key <= '6') {
-            const idx = parseInt(e.key, 10) - 1
-            if (CATEGORIES[idx]) switchCategory(CATEGORIES[idx].id)
           }
         }
 
         window.addEventListener('keydown', handleKeydown)
 
         return {
-          CATEGORIES,
-          currentCategory,
           current,
           slotInputs,
           userAnswer,
@@ -442,7 +397,6 @@
           wordSlots,
           next,
           advance,
-          switchCategory,
           exitAnalysis,
           resetSlots,
           onSlotInput,
@@ -455,15 +409,6 @@
       template: `
         <div>
           <h1>English Practice</h1>
-
-          <nav class="tabs" v-if="!showAnalysis">
-            <button
-              v-for="cat in CATEGORIES"
-              :key="cat.id"
-              :class="{ active: currentCategory === cat.id }"
-              @click="switchCategory(cat.id)"
-            >{{ cat.label }}</button>
-          </nav>
 
           <!-- Practice View -->
           <section v-if="!showAnalysis">
