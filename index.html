@@ -25,32 +25,6 @@
     a { color: var(--link); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* Top dark header bar */
-    header.topbar {
-      background: #0d1117;
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-      font-size: 14px;
-    }
-    .topbar .badge {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--primary);
-      color: #000;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .topbar .url { color: var(--text); font-weight: 500; }
-    .topbar .url::before { content: "/ "; color: var(--text-dim); }
-
     /* Main two-column area */
     main {
       max-width: 980px;
@@ -131,11 +105,6 @@
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <span class="badge">E</span>
-    <span class="url">smitea.github.io/english-practice</span>
-  </header>
-
   <main>
     <article>
       <h1 class="title">English Practice</h1>
