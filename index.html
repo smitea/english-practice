@@ -4,6 +4,79 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>English Practice</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2028;
+      --text: #e8e8e8;
+      --text-dim: #9ca3af;
+      --primary: #10b981;
+      --primary-bright: #22c55e;
+      --error: #f87171;
+      --border: #2d3748;
+      --pos-noun: #60a5fa;
+      --pos-verb: #10b981;
+      --pos-adjective: #f59e0b;
+      --pos-adverb: #a78bfa;
+      --pos-pronoun: #22d3ee;
+      --pos-auxiliary: #f472b6;
+      --pos-other: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    #app { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin-bottom: 16px; }
+    button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      transition: all 0.15s;
+    }
+    button:hover { border-color: var(--primary); }
+    button:active { transform: scale(0.98); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: #000; }
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      font-family: inherit;
+    }
+    input[type="text"]:focus { outline: none; border-color: var(--primary); }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .tabs button.active { background: var(--primary); color: #000; border-color: var(--primary); }
+    .scene { text-align: center; margin: 24px 0; }
+    .emoji { font-size: 3.5rem; }
+    .scene-desc { color: var(--text-dim); margin-top: 6px; }
+    .chinese {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .hints { margin: 12px 0; color: var(--text-dim); }
+    .hints summary { cursor: pointer; padding: 4px 0; }
+    .hints ul { padding-left: 20px; margin-top: 6px; }
+    .answer-feedback { margin: 16px 0; padding: 12px; border-radius: 6px; background: var(--surface); }
+    .answer-feedback.ok { border-left: 3px solid var(--primary-bright); }
+    .answer-feedback.bad { border-left: 3px solid var(--error); }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+  </style>
 </head>
 <body>
   <div id="app">
@@ -55,18 +128,123 @@
       document.getElementById('questions-data').textContent
     )
 
+    const CATEGORIES = [
+      { id: 'daily_greetings', label: '寒暄' },
+      { id: 'work',            label: '工作' },
+      { id: 'travel',          label: '旅行' },
+      { id: 'shopping',        label: '购物' },
+      { id: 'social_emotion',  label: '社交' },
+      { id: 'daily_life',      label: '生活' },
+    ]
+
+    function normalize(s) {
+      return s
+        .toLowerCase()
+        .trim()
+        .replace(/[.,!?;:'"]/g, '')
+        .replace(/\s+/g, ' ')
+    }
+
     const { createApp, ref, computed } = Vue
 
     createApp({
       setup() {
-        const current = ref(QUESTIONS[0])
-        return { current }
+        const currentCategory = ref('daily_greetings')
+        const userAnswer = ref('')
+        const revealed = ref(false)
+        const lastResult = ref(null)
+
+        const filtered = computed(() =>
+          QUESTIONS.filter(q => q.category === currentCategory.value)
+        )
+        const currentIndex = ref(0)
+        const current = computed(() => filtered.value[currentIndex.value] || filtered.value[0])
+
+        const isCorrect = computed(() =>
+          revealed.value &&
+          normalize(userAnswer.value) === normalize(current.value.english)
+        )
+
+        function next() {
+          const answered = userAnswer.value.trim().length > 0
+          if (answered) {
+            lastResult.value = isCorrect.value ? 'correct' : 'wrong'
+          }
+          revealed.value = false
+          userAnswer.value = ''
+          lastResult.value = null
+          currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+        }
+
+        function reveal() {
+          revealed.value = !revealed.value
+        }
+
+        function switchCategory(catId) {
+          currentCategory.value = catId
+          currentIndex.value = 0
+          userAnswer.value = ''
+          revealed.value = false
+          lastResult.value = null
+        }
+
+        return {
+          CATEGORIES,
+          currentCategory,
+          current,
+          userAnswer,
+          revealed,
+          lastResult,
+          isCorrect,
+          next,
+          reveal,
+          switchCategory,
+        }
       },
       template: `
         <div>
-          <p>{{ current.scene_emoji }} {{ current.scene_desc }}</p>
-          <h2>{{ current.chinese }}</h2>
-          <p><strong>Answer:</strong> {{ current.english }}</p>
+          <h1>English Practice</h1>
+
+          <nav class="tabs">
+            <button
+              v-for="cat in CATEGORIES"
+              :key="cat.id"
+              :class="{ active: currentCategory === cat.id }"
+              @click="switchCategory(cat.id)"
+            >{{ cat.label }}</button>
+          </nav>
+
+          <section class="scene">
+            <div class="emoji">{{ current.scene_emoji }}</div>
+            <div class="scene-desc">{{ current.scene_desc }}</div>
+          </section>
+
+          <section class="chinese">{{ current.chinese }}</section>
+
+          <input
+            type="text"
+            v-model="userAnswer"
+            placeholder="输入英文翻译…"
+            @keydown.enter="next"
+          />
+
+          <details class="hints">
+            <summary>词汇提示</summary>
+            <ul>
+              <li v-for="hint in current.hints" :key="hint">{{ hint }}</li>
+            </ul>
+          </details>
+
+          <section v-if="revealed" class="answer-feedback" :class="{ ok: isCorrect, bad: !isCorrect && userAnswer.length > 0 }">
+            <p v-if="isCorrect">✓ 答对了！</p>
+            <p v-else-if="userAnswer.length > 0">✗ 答案是: <strong>{{ current.english }}</strong></p>
+            <p v-else>答案: <strong>{{ current.english }}</strong></p>
+          </section>
+
+          <div class="actions">
+            <button @click="reveal">{{ revealed ? '隐藏答案' : '显示答案' }}</button>
+            <button class="primary" @click="next">下一题 →</button>
+          </div>
         </div>
       `
     }).mount('#app')
