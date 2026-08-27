@@ -125,6 +125,15 @@
     .similar li { padding: 6px 0; border-bottom: 1px solid var(--border); }
     .similar li:last-child { border-bottom: none; }
     .sim-cn { display: block; color: var(--text-dim); margin-top: 2px; font-size: 0.9rem; }
+    @media (max-width: 600px) {
+      body { padding: 12px; }
+      .chinese { font-size: 1.3rem; padding: 16px; }
+      .english-large { font-size: 1.5rem; }
+      .emoji { font-size: 3rem; }
+      .word-table { min-width: 320px; }
+      .actions { flex-wrap: wrap; }
+      .actions button { flex: 1; min-width: 120px; }
+    }
   </style>
 </head>
 <body>
