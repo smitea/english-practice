@@ -72,37 +72,38 @@
     .word-slots {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
       justify-content: center;
       margin-bottom: 12px;
       font-size: 1.1rem;
     }
     .slot-input {
-      display: inline-block;
-      width: 100px;
-      padding: 10px 8px;
-      background: var(--surface);
+      flex: 0 0 auto;
+      width: 110px;
+      padding: 10px 4px;
+      background: transparent;
       color: var(--text);
       border: none;
       border-bottom: 2px solid var(--border);
       text-align: center;
       font-family: "Times New Roman", Georgia, serif;
-      font-size: 1.1rem;
-      letter-spacing: 1px;
-      transition: all 0.15s;
-      border-radius: 4px 4px 0 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.5px;
+      transition: border-color 0.15s, color 0.15s;
+      border-radius: 0;
     }
     .slot-input:focus {
       outline: none;
       border-bottom-color: var(--primary);
-      background: #202832;
+      border-bottom-width: 2px;
     }
     .slot-input:disabled {
       cursor: not-allowed;
     }
     .slot-input::placeholder {
       color: var(--text-dim);
-      opacity: 0.5;
+      opacity: 0.4;
+      letter-spacing: 2px;
     }
     .slot-pending {
       color: var(--text-dim);
@@ -118,6 +119,18 @@
     .slot-revealed {
       color: var(--primary);
       border-bottom-color: var(--primary);
+    }
+    @keyframes slot-shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .slot-input.shake {
+      animation: slot-shake 0.4s ease-in-out;
+      border-bottom-color: var(--error) !important;
+      color: var(--error) !important;
     }
     .hints { margin: 12px 0; color: var(--text-dim); }
     .hints summary { cursor: pointer; padding: 4px 0; }
@@ -378,14 +391,32 @@
           if (cleaned !== e.target.value) {
             slotInputs.value[i] = cleaned
           }
-          // Auto-focus next slot if current is "full enough" (rough heuristic)
+
           const v = slotInputs.value[i] || ''
           const expected = (current.value.english
             .replace(/[.,!?;:'"]/g, '')
             .split(/\s+/)[i]) || ''
-          if (v.length >= expected.length && expected.length > 0) {
+
+          if (!v) return // empty, just wait
+
+          if (normalize(v) === normalize(expected)) {
+            // Correct! Jump to next slot.
             focusNextSlot(i)
+          } else if (v.length >= expected.length) {
+            // Wrong word + reached expected length - shake to give feedback.
+            triggerShake(i)
           }
+        }
+
+        function triggerShake(i) {
+          const inputs = document.querySelectorAll('.slot-input')
+          const input = inputs[i]
+          if (!input) return
+          input.classList.remove('shake')
+          // Force reflow so the animation can restart.
+          void input.offsetWidth
+          input.classList.add('shake')
+          setTimeout(() => input.classList.remove('shake'), 450)
         }
 
         function focusNextSlot(i) {
@@ -452,6 +483,7 @@
           exitAnalysis,
           resetSlots,
           onSlotInput,
+          triggerShake,
           focusNextSlot,
           onBackspace,
         }
