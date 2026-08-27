@@ -60,7 +60,6 @@
     }
     input[type="text"]:focus { outline: none; border-color: var(--primary); }
     input.slot-input {
-      width: 110px;
       background: transparent;
       border: none;
       border-bottom: 2px solid var(--border);
@@ -86,7 +85,6 @@
     }
     .slot-input {
       flex: 0 0 auto;
-      width: 110px;
       padding: 10px 4px;
       background: transparent;
       color: var(--text);
@@ -190,7 +188,7 @@
       .word-table { min-width: 320px; }
       .actions { flex-wrap: wrap; }
       .actions button { flex: 1; min-width: 120px; }
-      .slot-input { width: 80px; font-size: 1rem; padding: 8px 6px; }
+      .slot-input { font-size: 1rem; padding: 8px 6px; }
     }
   </style>
 </head>
@@ -218,6 +216,11 @@
         .trim()
         .replace(/[.,!?;:'"]/g, '')
         .replace(/\s+/g, ' ')
+    }
+
+    function slotWidth(word) {
+      // ~10px per character + padding; minimum 56px so very short words like "I" are still tappable.
+      return Math.max(56, word.length * 11 + 24) + 'px'
     }
 
     const { createApp, ref, computed } = Vue
@@ -412,6 +415,7 @@
           triggerShake,
           focusNextSlot,
           onBackspace,
+          slotWidth,
         }
       },
       template: `
@@ -439,6 +443,7 @@
                   'slot-revealed': revealed
                 }"
                 :placeholder="revealed ? slot.expected : '_'"
+                :style="{ width: slotWidth(slot.expected) }"
                 @keydown.space.prevent="onSlotSpace(i)"
                 @keydown.tab.prevent
                 @keydown.enter.prevent="next"
