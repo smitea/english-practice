@@ -141,21 +141,8 @@
       border-bottom-color: var(--error) !important;
       color: var(--error) !important;
     }
-    .hints { margin: 12px 0; color: var(--text-dim); }
-    .hints summary { cursor: pointer; padding: 4px 0; }
-    .hints ul { padding-left: 20px; margin-top: 6px; }
     .answer-feedback { margin: 16px 0; padding: 12px; border-radius: 6px; background: var(--surface); }
-    .answer-feedback.ok { border-left: 3px solid var(--primary-bright); }
     .answer-feedback.bad { border-left: 3px solid var(--error); }
-    .actions { display: flex; gap: 8px; margin-top: 16px; }
-    .progress-row {
-      display: flex;
-      justify-content: space-between;
-      color: var(--text-dim);
-      margin: 12px 0;
-      font-size: 0.9rem;
-    }
-    .mark-actions { margin-top: 8px; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .analysis-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
     .badge-ok { color: var(--primary-bright); font-weight: 600; }
@@ -244,37 +231,24 @@
         .replace(/\s+/g, ' ')
     }
 
-    const STORAGE_KEY = 'english-practice/v1'
-
-    function loadProgress() {
+    // localStorage helpers removed — progress tracking UI was removed.
+    function getLastCategory() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY)
-        if (!raw) return { known: [], review: [], lastCategory: 'daily_greetings' }
-        const parsed = JSON.parse(raw)
-        return {
-          known: Array.isArray(parsed.known) ? parsed.known : [],
-          review: Array.isArray(parsed.review) ? parsed.review : [],
-          lastCategory: parsed.lastCategory || 'daily_greetings',
-        }
+        const raw = localStorage.getItem('english-practice/lastCategory')
+        return raw || 'daily_greetings'
       } catch (e) {
-        return { known: [], review: [], lastCategory: 'daily_greetings' }
+        return 'daily_greetings'
       }
     }
-
-    function saveProgress(p) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(p))
-      } catch (e) {
-        // localStorage unavailable (e.g., private mode); silent no-op.
-      }
+    function setLastCategory(c) {
+      try { localStorage.setItem('english-practice/lastCategory', c) } catch (e) {}
     }
 
     const { createApp, ref, computed } = Vue
 
     createApp({
       setup() {
-        const progress = ref(loadProgress())
-        const currentCategory = ref(progress.value.lastCategory)
+        const currentCategory = ref(getLastCategory())
         const slotInputs = ref([])
         const revealed = ref(false)
         const lastResult = ref(null)
@@ -304,7 +278,7 @@
         resetSlots()
 
         const isCorrect = computed(() =>
-          revealed.value &&
+          userAnswer.value.trim().length > 0 &&
           normalize(userAnswer.value) === normalize(current.value.english)
         )
 
@@ -327,63 +301,40 @@
           })
         })
 
-        function next() {
-          const answered = userAnswer.value.trim().length > 0
-          if (answered && revealed.value) {
-            lastResult.value = isCorrect.value ? 'correct' : 'wrong'
-          }
-          if (lastResult.value === 'correct') {
-            showAnalysis.value = true
-            return
-          }
+        function advance() {
           revealed.value = false
           lastResult.value = null
           currentIndex.value = (currentIndex.value + 1) % filtered.value.length
           resetSlots()
         }
 
-        function reveal() {
-          revealed.value = !revealed.value
+        function next() {
+          // Already showing the answer (user pressed Enter after a wrong submission).
+          if (revealed.value && !isCorrect.value) {
+            advance()
+            return
+          }
+          // No answer typed — just skip.
+          if (userAnswer.value.trim().length === 0) {
+            advance()
+            return
+          }
+          // Correct — go to analysis view.
+          if (isCorrect.value) {
+            showAnalysis.value = true
+            return
+          }
+          // Wrong — reveal the answer; user presses Enter again to advance.
+          revealed.value = true
         }
 
         function switchCategory(catId) {
           currentCategory.value = catId
-          progress.value.lastCategory = catId
-          saveProgress(progress.value)
+          setLastCategory(catId)
           currentIndex.value = 0
           revealed.value = false
           lastResult.value = null
           resetSlots()
-        }
-
-        function markKnown() {
-          const id = current.value.id
-          if (!progress.value.known.includes(id)) {
-            progress.value.known.push(id)
-          }
-          progress.value.review = progress.value.review.filter(x => x !== id)
-          saveProgress(progress.value)
-          advanceQuestion()
-        }
-
-        function markReview() {
-          const id = current.value.id
-          if (!progress.value.review.includes(id)) {
-            progress.value.review.push(id)
-          }
-          saveProgress(progress.value)
-          advanceQuestion()
-        }
-
-        function advanceQuestion() {
-          revealed.value = false
-          lastResult.value = null
-          currentIndex.value = (currentIndex.value + 1) % filtered.value.length
-          resetSlots()
-        }
-
-        function isKnown(id) {
-          return progress.value.known.includes(id)
         }
 
         function exitAnalysis() {
@@ -471,9 +422,6 @@
           if (e.key === 'Enter') {
             e.preventDefault()
             next()
-          } else if (e.key === ' ') {
-            e.preventDefault()
-            reveal()
           } else if (e.key >= '1' && e.key <= '6') {
             const idx = parseInt(e.key, 10) - 1
             if (CATEGORIES[idx]) switchCategory(CATEGORIES[idx].id)
@@ -489,17 +437,12 @@
           slotInputs,
           userAnswer,
           revealed,
-          lastResult,
           showAnalysis,
           isCorrect,
           wordSlots,
-          progress,
           next,
-          reveal,
+          advance,
           switchCategory,
-          markKnown,
-          markReview,
-          isKnown,
           exitAnalysis,
           resetSlots,
           onSlotInput,
@@ -553,33 +496,8 @@
               />
             </div>
 
-            <details class="hints">
-              <summary>词汇提示</summary>
-              <ul>
-                <li v-for="hint in current.hints" :key="hint">{{ hint }}</li>
-              </ul>
-            </details>
-
-            <div v-if="revealed" class="answer-feedback" :class="{ ok: isCorrect, bad: !isCorrect && userAnswer.length > 0 }">
-              <p v-if="isCorrect">✓ 答对了！</p>
-              <p v-else-if="userAnswer.length > 0">✗ 答案是: <strong>{{ current.english }}</strong></p>
-              <p v-else>答案: <strong>{{ current.english }}</strong></p>
-            </div>
-
-            <div class="actions">
-              <button @click="reveal">{{ revealed ? '隐藏答案' : '显示答案' }}</button>
-              <button class="primary" @click="next">下一题 →</button>
-            </div>
-
-            <div class="progress-row">
-              <span>已掌握 {{ progress.known.length }} 题</span>
-              <span>需复习 {{ progress.review.length }} 题</span>
-            </div>
-            <div class="actions mark-actions">
-              <button @click="markKnown" :disabled="isKnown(current.id)">
-                {{ isKnown(current.id) ? '✓ 已掌握' : '✓ 标记已掌握' }}
-              </button>
-              <button @click="markReview">↻ 标记需复习</button>
+            <div v-if="revealed" class="answer-feedback" :class="{ bad: !isCorrect && userAnswer.length > 0 }">
+              <p v-if="!isCorrect && userAnswer.length > 0">� 答案是: <strong>{{ current.english }}</strong></p>
             </div>
           </section>
 
