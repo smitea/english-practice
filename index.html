@@ -69,6 +69,40 @@
       text-align: center;
       margin-bottom: 16px;
     }
+    .word-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 1.1rem;
+    }
+    .word-slots span {
+      display: inline-block;
+      min-width: 48px;
+      padding: 6px 10px;
+      border-bottom: 2px solid var(--border);
+      text-align: center;
+      font-family: "Times New Roman", Georgia, serif;
+      letter-spacing: 1px;
+      transition: all 0.15s;
+    }
+    .slot-pending {
+      color: var(--text-dim);
+      opacity: 0.5;
+    }
+    .slot-correct {
+      color: var(--primary-bright);
+      border-bottom-color: var(--primary-bright);
+    }
+    .slot-incorrect {
+      color: var(--error);
+      border-bottom-color: var(--error);
+    }
+    .slot-revealed {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
     .hints { margin: 12px 0; color: var(--text-dim); }
     .hints summary { cursor: pointer; padding: 4px 0; }
     .hints ul { padding-left: 20px; margin-top: 6px; }
@@ -218,6 +252,25 @@
           normalize(userAnswer.value) === normalize(current.value.english)
         )
 
+        const wordSlots = computed(() => {
+          const expected = current.value.english
+            .replace(/[.,!?;:'"]/g, '')
+            .split(/\s+/)
+            .filter(Boolean)
+          const typed = userAnswer.value
+            .replace(/[.,!?;:'"]/g, '')
+            .split(/\s+/)
+            .filter(Boolean)
+          return expected.map((word, i) => {
+            const t = typed[i]
+            return {
+              expected: word,
+              typed: t || '',
+              isCorrect: !!t && normalize(t) === normalize(word),
+            }
+          })
+        })
+
         function next() {
           const answered = userAnswer.value.trim().length > 0
           if (answered && revealed.value) {
@@ -317,6 +370,7 @@
           lastResult,
           showAnalysis,
           isCorrect,
+          wordSlots,
           progress,
           next,
           reveal,
@@ -348,6 +402,19 @@
             </div>
 
             <div class="chinese">{{ current.chinese }}</div>
+
+            <div class="word-slots">
+              <span
+                v-for="(slot, i) in wordSlots"
+                :key="i"
+                :class="{
+                  'slot-correct': slot.typed && slot.isCorrect,
+                  'slot-incorrect': slot.typed && !slot.isCorrect,
+                  'slot-pending': !slot.typed,
+                  'slot-revealed': revealed
+                }"
+              >{{ slot.typed || '_____' }}</span>
+            </div>
 
             <input
               type="text"
