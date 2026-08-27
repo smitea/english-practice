@@ -446,8 +446,8 @@
               />
             </div>
 
-            <div v-if="revealed" class="answer-feedback" :class="{ bad: !isCorrect && userAnswer.length > 0 }">
-              <p v-if="!isCorrect && userAnswer.length > 0">� 答案是: <strong>{{ current.english }}</strong></p>
+            <div v-if="revealed && !isCorrect && userAnswer.length > 0" class="answer-feedback bad">
+              <p>� 答案是: <strong>{{ current.english }}</strong></p>
             </div>
           </section>
 
