@@ -77,19 +77,35 @@
       margin-bottom: 12px;
       font-size: 1.1rem;
     }
-    .word-slots span {
+    .slot-input {
       display: inline-block;
-      min-width: 48px;
-      padding: 6px 10px;
+      width: 100px;
+      padding: 10px 8px;
+      background: var(--surface);
+      color: var(--text);
+      border: none;
       border-bottom: 2px solid var(--border);
       text-align: center;
       font-family: "Times New Roman", Georgia, serif;
+      font-size: 1.1rem;
       letter-spacing: 1px;
       transition: all 0.15s;
+      border-radius: 4px 4px 0 0;
+    }
+    .slot-input:focus {
+      outline: none;
+      border-bottom-color: var(--primary);
+      background: #202832;
+    }
+    .slot-input:disabled {
+      cursor: not-allowed;
+    }
+    .slot-input::placeholder {
+      color: var(--text-dim);
+      opacity: 0.5;
     }
     .slot-pending {
       color: var(--text-dim);
-      opacity: 0.5;
     }
     .slot-correct {
       color: var(--primary-bright);
@@ -167,6 +183,7 @@
       .word-table { min-width: 320px; }
       .actions { flex-wrap: wrap; }
       .actions button { flex: 1; min-width: 120px; }
+      .slot-input { width: 80px; font-size: 1rem; padding: 8px 6px; }
     }
   </style>
 </head>
@@ -236,7 +253,7 @@
       setup() {
         const progress = ref(loadProgress())
         const currentCategory = ref(progress.value.lastCategory)
-        const userAnswer = ref('')
+        const slotInputs = ref([])
         const revealed = ref(false)
         const lastResult = ref(null)
         const showAnalysis = ref(false)
@@ -246,6 +263,23 @@
         )
         const currentIndex = ref(0)
         const current = computed(() => filtered.value[currentIndex.value] || filtered.value[0])
+
+        const userAnswer = computed(() =>
+          slotInputs.value.map(s => s.trim()).filter(Boolean).join(' ')
+        )
+
+        function resetSlots() {
+          const expected = current.value.english
+            .replace(/[.,!?;:'"]/g, '')
+            .split(/\s+/)
+            .filter(Boolean)
+          slotInputs.value = expected.map(() => '')
+          Vue.nextTick(() => {
+            const first = document.querySelector('.slot-input')
+            if (first) first.focus()
+          })
+        }
+        resetSlots()
 
         const isCorrect = computed(() =>
           revealed.value &&
@@ -281,9 +315,9 @@
             return
           }
           revealed.value = false
-          userAnswer.value = ''
           lastResult.value = null
           currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+          resetSlots()
         }
 
         function reveal() {
@@ -295,9 +329,9 @@
           progress.value.lastCategory = catId
           saveProgress(progress.value)
           currentIndex.value = 0
-          userAnswer.value = ''
           revealed.value = false
           lastResult.value = null
+          resetSlots()
         }
 
         function markKnown() {
@@ -321,9 +355,9 @@
 
         function advanceQuestion() {
           revealed.value = false
-          userAnswer.value = ''
           lastResult.value = null
           currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+          resetSlots()
         }
 
         function isKnown(id) {
@@ -333,9 +367,45 @@
         function exitAnalysis() {
           showAnalysis.value = false
           revealed.value = false
-          userAnswer.value = ''
+          resetSlots()
           lastResult.value = null
           currentIndex.value = (currentIndex.value + 1) % filtered.value.length
+        }
+
+        function onSlotInput(i, e) {
+          // Strip spaces and punctuation from individual slot input (each slot = one word)
+          const cleaned = e.target.value.replace(/[\s.,!?;:'"]/g, '')
+          if (cleaned !== e.target.value) {
+            slotInputs.value[i] = cleaned
+          }
+          // Auto-focus next slot if current is "full enough" (rough heuristic)
+          const v = slotInputs.value[i] || ''
+          const expected = (current.value.english
+            .replace(/[.,!?;:'"]/g, '')
+            .split(/\s+/)[i]) || ''
+          if (v.length >= expected.length && expected.length > 0) {
+            focusNextSlot(i)
+          }
+        }
+
+        function focusNextSlot(i) {
+          const inputs = document.querySelectorAll('.slot-input')
+          const next = inputs[i + 1]
+          if (next) next.focus()
+        }
+
+        function onBackspace(i, e) {
+          if (!slotInputs.value[i] && i > 0) {
+            e.preventDefault()
+            const inputs = document.querySelectorAll('.slot-input')
+            const prev = inputs[i - 1]
+            if (prev) {
+              prev.focus()
+              // Move cursor to end
+              const len = prev.value.length
+              prev.setSelectionRange(len, len)
+            }
+          }
         }
 
         function handleKeydown(e) {
@@ -365,6 +435,7 @@
           CATEGORIES,
           currentCategory,
           current,
+          slotInputs,
           userAnswer,
           revealed,
           lastResult,
@@ -379,6 +450,10 @@
           markReview,
           isKnown,
           exitAnalysis,
+          resetSlots,
+          onSlotInput,
+          focusNextSlot,
+          onBackspace,
         }
       },
       template: `
@@ -404,24 +479,27 @@
             <div class="chinese">{{ current.chinese }}</div>
 
             <div class="word-slots">
-              <span
+              <input
                 v-for="(slot, i) in wordSlots"
                 :key="i"
+                type="text"
+                v-model="slotInputs[i]"
+                class="slot-input"
                 :class="{
-                  'slot-correct': slot.typed && slot.isCorrect,
-                  'slot-incorrect': slot.typed && !slot.isCorrect,
-                  'slot-pending': !slot.typed,
+                  'slot-correct': slot.typed && slot.isCorrect && !revealed,
+                  'slot-incorrect': slot.typed && !slot.isCorrect && !revealed,
+                  'slot-pending': !slot.typed && !revealed,
                   'slot-revealed': revealed
                 }"
-              >{{ slot.typed || '_____' }}</span>
+                :placeholder="revealed ? slot.expected : '_'"
+                :disabled="revealed"
+                @keydown.enter.prevent="next"
+                @input="onSlotInput(i, $event)"
+                @keydown.space.prevent="focusNextSlot(i)"
+                @keydown.tab.prevent="focusNextSlot(i)"
+                @keydown.backspace="onBackspace(i, $event)"
+              />
             </div>
-
-            <input
-              type="text"
-              v-model="userAnswer"
-              placeholder="输入英文翻译…"
-              @keydown.enter="next"
-            />
 
             <details class="hints">
               <summary>词汇提示</summary>
