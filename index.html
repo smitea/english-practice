@@ -281,23 +281,28 @@
         }
 
         function next() {
-          // Already showing the answer (user pressed Enter after a wrong submission).
-          if (revealed.value && !isCorrect.value) {
-            advance()
-            return
-          }
           // No answer typed — just skip.
           if (userAnswer.value.trim().length === 0) {
             advance()
             return
           }
-          // Correct — go to analysis view.
           if (isCorrect.value) {
-            showAnalysis.value = true
+            // User fixed it after seeing the answer → just advance
+            // (they've already seen the correct answer, no need for analysis view).
+            // Otherwise, first-time correct → analysis view.
+            if (revealed.value) {
+              advance()
+            } else {
+              showAnalysis.value = true
+            }
             return
           }
-          // Wrong — reveal the answer; user presses Enter again to advance.
-          revealed.value = true
+          // Wrong: first time → reveal the answer.
+          // If already revealed (user pressed Enter again while still wrong),
+          // do nothing — let them keep editing.
+          if (!revealed.value) {
+            revealed.value = true
+          }
         }
 
         function exitAnalysis() {
@@ -428,13 +433,12 @@
                 v-model="slotInputs[i]"
                 class="slot-input"
                 :class="{
-                  'slot-correct': slot.typed && slot.isCorrect && !revealed,
-                  'slot-incorrect': slot.typed && !slot.isCorrect && !revealed,
-                  'slot-pending': !slot.typed && !revealed,
+                  'slot-correct': slot.typed && slot.isCorrect,
+                  'slot-incorrect': slot.typed && !slot.isCorrect,
+                  'slot-pending': !slot.typed,
                   'slot-revealed': revealed
                 }"
                 :placeholder="revealed ? slot.expected : '_'"
-                :disabled="revealed"
                 @keydown.space.prevent="onSlotSpace(i)"
                 @keydown.enter.prevent="next"
                 @input="onSlotInput(i, $event)"
